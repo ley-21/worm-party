@@ -133,7 +133,7 @@
     </div>
     <button class="btn btn-main" id="joinBtn">입장하기</button>
     <div class="err" id="homeErr"></div>
-    <div class="hint">같은 코드를 입력한 사람끼리 같은 방에 들어가요.<br>없는 코드면 새 방이 만들어져요. (최대 30명)</div>
+    <div class="hint">같은 코드를 입력한 사람끼리 같은 방에 들어가요.<br>없는 코드면 새 방이 만들어져요. (최대 30명)<br><b>조작:</b> WASD 또는 마우스로 이동 · 스페이스바/클릭으로 대쉬</div>
   </div>
 </section>
 
@@ -365,11 +365,31 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-cv.addEventListener('mousemove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.has = true; });
+// 키보드: WASD(또는 방향키)로 8방향 이동, 스페이스바로 대쉬
+const DIR_KEYS = {
+  KeyW: [0, -1], KeyS: [0, 1], KeyA: [-1, 0], KeyD: [1, 0],
+  ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+};
+const held = new Set();
+let useKeys = false;          // 마지막으로 키보드로 조작했으면 true, 마우스를 움직이면 false
+function keyAngle() {
+  let x = 0, y = 0;
+  for (const k of held) { x += DIR_KEYS[k][0]; y += DIR_KEYS[k][1]; }
+  return (x || y) ? Math.atan2(y, x) : null;
+}
+cv.addEventListener('mousemove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.has = true; useKeys = false; });
 cv.addEventListener('mousedown', (e) => { if (e.button === 0) boostMouse = true; });
 window.addEventListener('mouseup', () => { boostMouse = false; });
-window.addEventListener('keydown', (e) => { if (inGame && (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp')) { boostKey = true; e.preventDefault(); } });
-window.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') boostKey = false; });
+window.addEventListener('keydown', (e) => {
+  if (!inGame) return;
+  if (e.code === 'Space') { boostKey = true; e.preventDefault(); }
+  else if (DIR_KEYS[e.code]) { held.add(e.code); useKeys = true; e.preventDefault(); }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') boostKey = false;
+  else if (DIR_KEYS[e.code]) held.delete(e.code);
+});
+window.addEventListener('blur', () => { held.clear(); boostKey = false; boostMouse = false; });
 function onTouch(e) {
   e.preventDefault();
   const t = e.touches[0];
@@ -387,8 +407,14 @@ bb.addEventListener('touchcancel', () => { boostBtn = false; bb.classList.remove
 let lastSent = { a: 0, b: false, t: 0 };
 setInterval(() => {
   if (!inGame || !state || !state.me || !state.me.a) return;
-  if (!pointer.has) return;
-  const a = Math.atan2(pointer.y - headScreen.y, pointer.x - headScreen.x);
+  let a;
+  if (useKeys) {
+    a = keyAngle();
+    if (a === null) a = lastSent.a;   // 키를 떼면 지금 방향으로 계속 직진
+  } else {
+    if (!pointer.has) return;
+    a = Math.atan2(pointer.y - headScreen.y, pointer.x - headScreen.x);
+  }
   const b = boostMouse || boostKey || boostTouch || boostBtn;
   const now = performance.now();
   if (Math.abs(a - lastSent.a) > 0.01 || b !== lastSent.b || now - lastSent.t > 500) {

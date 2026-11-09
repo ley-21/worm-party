@@ -377,17 +377,26 @@ function keyAngle() {
   for (const k of held) { x += DIR_KEYS[k][0]; y += DIR_KEYS[k][1]; }
   return (x || y) ? Math.atan2(y, x) : null;
 }
-cv.addEventListener('mousemove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; pointer.has = true; useKeys = false; });
+// 방향키를 누르고 있는 동안은 마우스 방향을 무시 (클릭 대쉬는 그대로).
+// 키를 모두 뗀 뒤에도 마우스를 '확실히' 움직여야(60px 이상) 마우스 조작으로 돌아감 → 클릭할 때 손떨림으로 바뀌지 않음
+let lastKeyUp = 0, mouseTravel = 0;
+cv.addEventListener('mousemove', (e) => {
+  if (pointer.has) mouseTravel += Math.hypot(e.clientX - pointer.x, e.clientY - pointer.y);
+  pointer.x = e.clientX; pointer.y = e.clientY; pointer.has = true;
+  if (!useKeys) return;
+  if (held.size > 0 || performance.now() - lastKeyUp < 300) { mouseTravel = 0; return; }
+  if (mouseTravel > 60) useKeys = false;
+});
 cv.addEventListener('mousedown', (e) => { if (e.button === 0) boostMouse = true; });
 window.addEventListener('mouseup', () => { boostMouse = false; });
 window.addEventListener('keydown', (e) => {
   if (!inGame) return;
   if (e.code === 'Space') { boostKey = true; e.preventDefault(); }
-  else if (DIR_KEYS[e.code]) { held.add(e.code); useKeys = true; e.preventDefault(); }
+  else if (DIR_KEYS[e.code]) { held.add(e.code); useKeys = true; mouseTravel = 0; e.preventDefault(); }
 });
 window.addEventListener('keyup', (e) => {
   if (e.code === 'Space') boostKey = false;
-  else if (DIR_KEYS[e.code]) held.delete(e.code);
+  else if (DIR_KEYS[e.code]) { held.delete(e.code); lastKeyUp = performance.now(); mouseTravel = 0; }
 });
 window.addEventListener('blur', () => { held.clear(); boostKey = false; boostMouse = false; });
 function onTouch(e) {

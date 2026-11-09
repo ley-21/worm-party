@@ -1,0 +1,16 @@
+{
+  "name": "worm-party",
+  "version": "1.0.0",
+  "description": "반 친구들끼리 방 코드로 모여서 하는 멀티플레이 지렁이 게임",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
